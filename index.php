@@ -1,9 +1,9 @@
 <?php
 // --- PŘIPOJENÍ K MARIADB DATABÁZI ---
 $host = 'localhost';
-$db   = 'muj_web';    // Zde zadej název své databáze v phpMyAdminu
-$user = 'root';       // Uživatelské jméno
-$pass = '';           // Heslo do DB
+$db   = 'prace_db_tst';    // Zde zadej název své databáze v phpMyAdminu
+$user = 'klema';       // Uživatelské jméno
+$pass = 'mojeheslo123';           // Heslo do DB
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
