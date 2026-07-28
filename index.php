@@ -1,123 +1,108 @@
+<?php
+// --- PŘIPOJENÍ K MARIADB DATABÁZI ---
+$host = 'localhost';
+$db   = 'muj_web';    // Zde zadej název své databáze v phpMyAdminu
+$user = 'root';       // Uživatelské jméno
+$pass = '';           // Heslo do DB
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Chyba připojení k DB: " . $e->getMessage());
+}
+
+// Získání hledaného textu z formuláře
+$hledanyText = $_GET['q'] ?? '';
+$vysledky = [];
+
+if (!empty($hledanyText)) {
+    $search = '%' . $hledanyText . '%';
+    
+    // Prohledáváme všechny sloupce z tvé tabulky
+    // Změň 'pojmy' níže na reálný název tvé tabulky v phpMyAdminu
+    $sql = "SELECT * FROM pojmy WHERE 
+            cz_pojem LIKE ? OR 
+            en_pojem LIKE ? OR 
+            cz_popis LIKE ? OR 
+            en_popis LIKE ? OR 
+            cz_zkratka LIKE ? OR 
+            en_zkratka LIKE ?";
+
+    $stmt = $pdo->prepare($sql);
+    // Předáme vyhledávaný řetězec 6x (pro každý parametr v WHERE)
+    $stmt->execute([$search, $search, $search, $search, $search, $search]);
+    $vysledky = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+?>
+
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slovník pojmů</title>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 10px; background: #f4f4f9; }
-        .search-box { width: 100%; padding: 12px; font-size: 18px; box-sizing: border-box; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 6px; }
-        table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #007bff; color: white; position: sticky; top: 0; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .status { text-align: center; padding: 10px; color: #666; font-style: italic; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Vyhledávání pojmů</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 0 20px; }
+    .search-form { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"] { flex: 1; padding: 10px; font-size: 16px; border: 2px solid #ccc; border-radius: 6px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 6px; }
+    .polozka { padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 12px; background: #fdfdfd; }
+    .polozka h3 { margin: 0 0 5px 0; color: #222; }
+    .zkratky { color: #888; font-size: 13px; margin-bottom: 8px; }
+    .popis { margin: 5px 0; color: #444; font-size: 14px; }
+    .lang-block { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee; }
+  </style>
 </head>
 <body>
 
-    <h2>Vyhledávání v databázi</h2>
-    <input type="text" id="searchInput" class="search-box" placeholder="Napište alespoň 2 znaky..." autofocus>
+  <h2>Slovník pojmů a zkratek</h2>
 
-    <table>
-        <thead>
-            <tr>
-                <th>EN Pojem</th>
-                <th>EN Popis</th>
-                <th>CZ Pojem</th>
-                <th>CZ Popis</th>
-            </tr>
-        </thead>
-        <tbody id="resultsTable">
-            <!-- Sem se dynamicky vkládají řádky -->
-        </tbody>
-    </table>
+  <form action="index.php" method="GET" class="search-form">
+    <input 
+      type="text" 
+      name="q" 
+      placeholder="Hledat český nebo anglický pojem/zkratku..." 
+      value="<?= htmlspecialchars($hledanyText) ?>"
+    >
+    <button type="submit">Hledat</button>
+  </form>
 
-    <div id="status" class="status"></div>
+  <div class="vysledky">
+    <?php if (!empty($hledanyText)): ?>
+      <p>Nalezeno výsledků: <strong><?= count($vysledky) ?></strong></p>
+      
+      <?php if (count($vysledky) > 0): ?>
+        <?php foreach ($vysledky as $p): ?>
+          <div class="polozka">
+            <!-- CZ Název a zkratka -->
+            <h3>
+              <?= htmlspecialchars($p['cz_pojem']) ?> 
+              <?php if (!empty($p['en_pojem'])): ?>
+                / <?= htmlspecialchars($p['en_pojem']) ?>
+              <?php endif; ?>
+            </h3>
 
-    <script>
-        let query = '';
-        let page = 1;
-        let isLoading = false;
-        let hasMore = true;
+            <div class="zkratky">
+              <?php if (!empty($p['cz_zkratka'])): ?>CZ zkratka: <strong><?= htmlspecialchars($p['cz_zkratka']) ?></strong> | <?php endif; ?>
+              <?php if (!empty($p['en_zkratka'])): ?>EN zkratka: <strong><?= htmlspecialchars($p['en_zkratka']) ?></strong><?php endif; ?>
+            </div>
 
-        const input = document.getElementById('searchInput');
-        const tableBody = document.getElementById('resultsTable');
-        const status = document.getElementById('status');
+            <!-- CZ Popis -->
+            <?php if (!empty($p['cz_popis'])): ?>
+              <div class="popis"><strong>CZ:</strong> <?= htmlspecialchars($p['cz_popis']) ?></div>
+            <?php endif; ?>
 
-        // Odchycení psaní do vyhledávače (s lehkou pauzou/debounce)
-        let timeout = null;
-        input.addEventListener('input', () => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                query = input.value.trim();
-                page = 1;
-                hasMore = true;
-                tableBody.innerHTML = ''; // Vyčistit tabulku při novém hledání
-                
-                if (query.length >= 2) {
-                    loadData();
-                } else {
-                    status.innerText = 'Napište alespoň 2 znaky...';
-                }
-            }, 300); // Čeká 300ms po dokončení psaní
-        });
-
-        // Funkce pro načtení dat z serveru
-        async function loadData() {
-            if (isLoading || !hasMore) return;
-            isLoading = true;
-            status.innerText = 'Načítám data...';
-
-            try {
-                const response = await fetch(`search.php?q=${encodeURIComponent(query)}&page=${page}`);
-                const data = await response.json();
-
-                if (data.length === 0) {
-                    hasMore = false;
-                    if (page === 1) {
-                        status.innerText = 'Nebyly nalezeny žádné výsledky.';
-                    } else {
-                        status.innerText = 'Konec výsledků.';
-                    }
-                } else {
-                    data.forEach(row => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td><strong>${escapeHtml(row.en_pojem)}</strong></td>
-                            <td>${escapeHtml(row.en_popis || '')}</td>
-                            <td><strong>${escapeHtml(row.cz_pojem)}</strong></td>
-                            <td>${escapeHtml(row.cz_popis || '')}</td>
-                        `;
-                        tableBody.appendChild(tr);
-                    });
-                    
-                    page++;
-                    status.innerText = '';
-                }
-            } catch (error) {
-                status.innerText = 'Chyba při načítání dat.';
-            } finally {
-                isLoading = false;
-            }
-        }
-
-        // Infinite Scroll - Detekce doskrolovaní na spodní část stránky
-        window.addEventListener('scroll', () => {
-            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-                if (query.length >= 2 && hasMore && !isLoading) {
-                    loadData();
-                }
-            }
-        });
-
-        // Ochrana proti XSS
-        function escapeHtml(str) {
-            return str.replace(/[&<>"']/g, match => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-            }[match]));
-        }
-    </script>
+            <!-- EN Popis -->
+            <?php if (!empty($p['en_popis'])): ?>
+              <div class="popis"><strong>EN:</strong> <?= htmlspecialchars($p['en_popis']) ?></div>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <p>Pro výraz "<strong><?= htmlspecialchars($hledanyText) ?></strong>" nebylo nic nalezeno.</p>
+      <?php endif; ?>
+    <?php endif; ?>
+  </div>
 
 </body>
 </html>
