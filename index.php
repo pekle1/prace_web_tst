@@ -1,7 +1,7 @@
 <?php
 // --- PŘIPOJENÍ K MARIADB DATABÁZI ---
 $host = 'localhost';
-$db   = 'prace_db_tst';    // Zde zadej název své databáze v phpMyAdminu
+$db   = 'prace_db_test';    // Zde zadej název své databáze v phpMyAdminu
 $user = 'klema';       // Uživatelské jméno
 $pass = 'mojeheslo123';           // Heslo do DB
 
