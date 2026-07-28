@@ -4,9 +4,9 @@ header('Content-Type: application/json; charset=utf-8');
 
 // Konfigurace databáze
 $host = 'localhost';
-$db   = 'tvuj_nazev_databaze'; // ZMĚŇ na název své DB
-$user = 'tvuj_uzivatel';       // ZMĚŇ na svého DB uživatele
-$pass = 'tvoje_heslo';          // ZMĚŇ na své heslo
+$db   = 'prace_db_test'; // ZMĚŇ na název své DB
+$user = 'klema';       // ZMĚŇ na svého DB uživatele
+$pass = 'mojeheslo123';          // ZMĚŇ na své heslo
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
